@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RalphHorror Progress Bar</title>
+<style>
+html, body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    background: transparent;
+    overflow: hidden;
+    font-family: Arial, Helvetica, sans-serif;
+}
+
+.widget {
+    width: 1000px;
+    height: 190px;
+    position: relative;
+    box-sizing: border-box;
+    padding: 27px 35px;
+    color: #fff;
+}
+
+.top {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    height: 75px;
+}
+
+.ghost {
+    font-size: 42px;
+    line-height: 1;
+    filter: grayscale(1) drop-shadow(0 0 9px rgba(150,0,0,.9));
+}
+
+.info {
+    min-width: 0;
+    flex: 1;
+}
+
+.story {
+    font-size: 38px;
+    line-height: 1.08;
+    font-weight: 900;
+    letter-spacing: .3px;
+    color: #fff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-shadow:
+        0 2px 0 #260000,
+        0 4px 12px rgba(0,0,0,.95),
+        0 0 13px rgba(125,0,0,.8);
+}
+
+.timer {
+    font-size: 22px;
+    font-weight: 800;
+    min-width: 150px;
+    text-align: right;
+    color: #eee;
+    text-shadow: 0 2px 8px #000;
+}
+
+.bar {
+    position: absolute;
+    left: 35px;
+    right: 35px;
+    bottom: 42px;
+    height: 14px;
+    background: rgba(70,0,0,.65);
+    border: 1px solid rgba(255,255,255,.18);
+    border-radius: 20px;
+    box-shadow:
+        0 0 8px rgba(0,0,0,.9),
+        inset 0 0 8px rgba(0,0,0,.9);
+}
+
+.fill {
+    position: absolute;
+    left: 0;
+    top: 0;
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #580000, #b30000, #e00000);
+    border-radius: 20px;
+    box-shadow:
+        0 0 8px rgba(190,0,0,.9),
+        0 0 18px rgba(100,0,0,.65);
+}
+
+.dot {
+    position: absolute;
+    top: 50%;
+    left: 0%;
+    width: 21px;
+    height: 21px;
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    background: #e00000;
+    border: 2px solid #fff;
+    box-shadow:
+        0 0 8px #e00000,
+        0 0 18px rgba(160,0,0,.9);
+}
+
+/* Тонкая красная линия под названием */
+.widget::after {
+    content: "";
+    position: absolute;
+    left: 35px;
+    top: 103px;
+    width: 105px;
+    height: 3px;
+    background: #b00000;
+    border-radius: 5px;
+    box-shadow: 0 0 10px rgba(180,0,0,.9);
+}
+</style>
+</head>
+<body>
+
+<div class="widget">
+    <div class="top">
+        <div class="ghost">👻</div>
+        <div class="info">
+            <div class="story" id="story">Сгнивший дед</div>
+        </div>
+        <div class="timer" id="timer">00:00 / 27:24</div>
+    </div>
+
+    <div class="bar">
+        <div class="fill" id="fill"></div>
+        <div class="dot" id="dot"></div>
+    </div>
+</div>
+
+<script>
+const stories = [
+    { title: "Сгнивший дед", start: 0, end: 27*60 + 24 },
+    { title: "На органы", start: 27*60 + 24, end: 54*60 + 9 },
+    { title: "В подъезде начали пропадать люди", start: 54*60 + 9, end: 75*60 + 4 },
+    { title: "Дверь же была заперта", start: 75*60 + 4, end: 106*60 + 28 },
+    { title: "Куда заехал", start: 106*60 + 28, end: 131*60 + 41 },
+    { title: "Папа где мой мишка", start: 131*60 + 41, end: 153*60 + 16 },
+    { title: "Зеркало начало смотреть на меня", start: 153*60 + 16, end: 176*60 + 14 },
+    { title: "Выброшенный в мусор владелец", start: 176*60 + 14, end: 197*60 + 19 },
+    { title: "Не смотри старые кассеты", start: 197*60 + 19, end: 197*60 + 19 + 30*60 }
+];
+
+const storyEl = document.getElementById("story");
+const timerEl = document.getElementById("timer");
+const fillEl = document.getElementById("fill");
+const dotEl = document.getElementById("dot");
+
+const started = performance.now();
+
+function formatTime(sec) {
+    sec = Math.max(0, Math.floor(sec));
+    const h = Math.floor(sec / 3600);
+    const m = Math.floor((sec % 3600) / 60);
+    const s = sec % 60;
+
+    if (h > 0) {
+        return String(h).padStart(2, "0") + ":" +
+               String(m).padStart(2, "0") + ":" +
+               String(s).padStart(2, "0");
+    }
+
+    return String(m).padStart(2, "0") + ":" +
+           String(s).padStart(2, "0");
+}
+
+function update() {
+    const elapsed = (performance.now() - started) / 1000;
+
+    let story = stories.find(s => elapsed >= s.start && elapsed < s.end);
+    if (!story) story = stories[stories.length - 1];
+
+    const duration = story.end - story.start;
+    const local = Math.max(0, Math.min(elapsed - story.start, duration));
+    const progress = duration > 0 ? Math.min(100, local / duration * 100) : 0;
+
+    storyEl.textContent = story.title;
+    timerEl.textContent = `${formatTime(local)} / ${formatTime(duration)}`;
+    fillEl.style.width = progress + "%";
+    dotEl.style.left = progress + "%";
+
+    requestAnimationFrame(update);
+}
+
+update();
+</script>
+
+</body>
+</html>
